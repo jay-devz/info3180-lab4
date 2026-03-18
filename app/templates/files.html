@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block main %}
+<div class="container">
+    <h1 class="page-header text-center my-4">Uploaded Images</h1>
+
+    {% include 'flash_messages.html' %}
+
+    <div class="row row-cols-1 row-cols-md-3 g-4">
+        {% for image in images %}
+        <div class="col">
+            <div class="card h-100 shadow-sm">
+                <img src="{{ url_for('get_image', filename=image) }}" class="card-img-top" alt="{{ image }}">
+                <div class="card-body">
+                    <p class="card-text text-center text-muted small">{{ image }}</p>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12 text-center">
+            <p class="alert alert-info">No images uploaded yet.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

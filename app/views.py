@@ -6,6 +6,8 @@ from werkzeug.utils import secure_filename
 from app.models import UserProfile
 from app.forms import LoginForm
 from werkzeug.security import check_password_hash
+from app.forms import UploadForm, LoginForm
+from flask import send_from_directory
 
 
 ###
@@ -25,18 +27,26 @@ def about():
 
 
 @app.route('/upload', methods=['POST', 'GET'])
+@login_required
 def upload():
-    # Instantiate your form class
+    form = UploadForm()
 
-    # Validate file upload on submit
     if form.validate_on_submit():
-        # Get file data and save to your uploads folder
+        file = form.image.data
+        filename = secure_filename(file.filename)
+        
+        # 1. Use app.root_path to get the directory where your 'app' folder is
+        # 2. Go UP one level (..) to find the 'uploads' folder in the project root
+        upload_path = os.path.join(app.root_path, '..', app.config['UPLOAD_FOLDER'], filename)
+
+        file.save(upload_path)
 
         flash('File Saved', 'success')
-        return redirect(url_for('home')) # Update this to redirect the user to a route that displays all uploaded image files
+        return redirect(url_for('home')) 
 
-    return render_template('upload.html')
-
+    # If it's a GET request or validation fails, show errors
+    flash_errors(form)
+    return render_template('upload.html', form=form)
 
 @app.route('/login', methods=['POST', 'GET'])
 def login():
@@ -107,3 +117,36 @@ def add_header(response):
 def page_not_found(error):
     """Custom 404 page."""
     return render_template('404.html'), 404
+
+def get_uploaded_images(): #step 1: Helper function to list filenamesdm
+    """Helper function to get uploaded images."""
+    rootdir = os.getcwd()
+    upload_path = os.path.join(rootdir, app.config['UPLOAD_FOLDER'])
+    images = []
+    for subdir, dirs, files in os.walk(upload_path):
+        for file in files:
+            if file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+                images.append(file)
+    return images
+
+# Step 2: Route to serve a specific image file from the folder
+@app.route('/uploads/<filename>')
+def get_image(filename):
+    return send_from_directory(os.path.join(os.getcwd(), app.config['UPLOAD_FOLDER']), filename)
+
+# Step 3 & 6: Route to display the gallery (protected by login)
+@app.route('/files')
+@login_required
+def files():
+    image_list = get_uploaded_images()
+    return render_template('files.html', images=image_list)
+
+@app.route('/logout')
+@login_required
+def logout():
+    # 1. Use Flask-Login's logout_user method
+    logout_user()
+    
+    # 2. Flash a message and redirect to home
+    flash('You have been logged out.', 'info')
+    return redirect(url_for('home'))
